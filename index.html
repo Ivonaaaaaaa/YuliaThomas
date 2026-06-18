@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hitster: Yulia & Thomas Wedding Edition</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1DB954">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+</head>
+<body class="bg-zinc-950 text-white font-sans flex flex-col justify-between min-h-screen p-6">
+
+    <header class="text-center py-4">
+        <h1 class="text-3xl font-black tracking-wider text-emerald-400">HITSTER</h1>
+        <p class="text-xs font-bold text-amber-400 mt-1 uppercase tracking-widest animate-pulse">
+            💍 Yulia & Thomas Special Wedding Edition
+        </p>
+    </header>
+
+    <main class="flex-1 flex flex-col items-center justify-center gap-6">
+        <div class="relative w-72 h-72 rounded-3xl overflow-hidden border-4 border-emerald-500 shadow-2xl shadow-emerald-500/20 bg-zinc-900">
+            <div id="reader" class="w-full h-full"></div>
+            <div class="absolute inset-0 border-2 border-transparent pointer-events-none flex items-center justify-center">
+                <div class="w-48 h-48 border-2 border-dashed border-emerald-400/50 rounded-xl animate-pulse"></div>
+            </div>
+        </div>
+
+        <div class="text-center max-w-xs w-full min-h-[40px] flex flex-col items-center justify-center">
+            <p id="status" class="text-sm font-medium text-zinc-300">Align a card QR code in the box</p>
+        </div>
+
+        <div id="player-wrapper" class="hidden relative w-full max-w-xs h-[80px] bg-zinc-900 rounded-2xl shadow-xl overflow-hidden border border-zinc-800">
+            
+            <div id="player-container" class="w-full h-full absolute inset-0"></div>
+            
+            <div class="absolute inset-y-0 left-0 w-[calc(100%-80px)] bg-zinc-900 z-10 flex flex-col items-start justify-center px-4 border-r border-zinc-800">
+                <p class="text-sm font-black text-emerald-400 uppercase tracking-widest">Mystery Track</p>
+                <p class="text-xs text-zinc-400 font-bold mt-1">Tap Play 👉</p>
+            </div>
+
+        </div>
+    </main>
+
+    <footer class="flex justify-center gap-4 py-4">
+        <button id="reset-btn" class="px-8 py-3 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 active:scale-95 transition rounded-full font-bold text-sm tracking-wide text-zinc-300 uppercase">
+            Next Card ➡️
+        </button>
+    </footer>
+
+    <script>
+        const statusText = document.getElementById('status');
+        const playerWrapper = document.getElementById('player-wrapper');
+        const playerContainer = document.getElementById('player-container');
+        const resetBtn = document.getElementById('reset-btn');
+        let html5QrcodeScanner;
+        let currentTrackId = '';
+
+        function onScanSuccess(decodedText, decodedResult) {
+            if (decodedText.includes('track/')) {
+                const match = decodedText.match(/track\/([a-zA-Z0-9]+)/);
+                if (match && match[1]) {
+                    const trackId = match[1];
+                    
+                    if (trackId !== currentTrackId) {
+                        currentTrackId = trackId;
+                        html5QrcodeScanner.pause();
+                        
+                        statusText.innerText = "🎵 Card Captured! Press Play below.";
+                        statusText.className = "text-sm font-bold text-emerald-500";
+                        
+                        // Inject the Spotify embed widget
+                        playerContainer.innerHTML = `
+                            <iframe 
+                                style="border-radius:12px" 
+                                src="https://open.spotify.com/embed/track/${currentTrackId}?utm_source=generator&theme=0" 
+                                width="100%" 
+                                height="80" 
+                                frameBorder="0" 
+                                allowfullscreen="" 
+                                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
+                                loading="lazy">
+                            </iframe>`;
+                        
+                        playerWrapper.classList.remove('hidden');
+                    }
+                }
+            } else {
+                statusText.innerText = "Please scan a valid Hitster Spotify QR code.";
+                statusText.className = "text-sm font-medium text-amber-500";
+            }
+        }
+
+        function startScanner() {
+            html5QrcodeScanner = new Html5Qrcode("reader");
+            html5QrcodeScanner.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: { width: 250, height: 250 } },
+                onScanSuccess
+            ).catch(err => { 
+                statusText.innerText = "Camera access required to play.";
+                console.error(err); 
+            });
+        }
+
+        resetBtn.addEventListener('click', () => {
+            playerContainer.innerHTML = '';
+            playerWrapper.classList.add('hidden');
+            currentTrackId = '';
+            statusText.innerText = "Align a card QR code in the box";
+            statusText.className = "text-sm font-medium text-zinc-300";
+            
+            try { html5QrcodeScanner.resume(); } catch(e){}
+        });
+
+        window.addEventListener('DOMContentLoaded', startScanner);
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').catch(err => console.log(err));
+        }
+    </script>
+</body>
+</html>
